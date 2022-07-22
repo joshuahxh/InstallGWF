@@ -4,12 +4,42 @@ using System.IO.Compression;
 var devices = MediaDevice.GetDevices();
 MediaDevice garminDevice;
 
-// check if there are any connected garmin devices
-if (devices.Count() == 0 || (garminDevice = devices.First(d => d.Manufacturer == "Garmin")) == null)
+while (true)
 {
-    Console.WriteLine("No Garmin device found.");
-    Console.ReadKey();
-    return;
+    int count = devices.Count();
+    if (count == 0)
+    {
+        Console.WriteLine("No Garmin device found, please plugin your Garmin device.");
+        Console.WriteLine("Press any key to continue or ctrl+c to exit.");
+        Console.ReadKey();
+    }
+    else
+    {
+        Console.WriteLine("Available devices: ");
+        for (int i = 1; i <= count; i++)
+        {
+            var device = devices.ElementAt(i - 1);
+            Console.WriteLine($"{i}: {device.FriendlyName}");
+        }
+        if (count == 1 && devices.ElementAt(0).Manufacturer == "Garmin")
+        {
+            garminDevice = devices.ElementAt(0);
+            Console.WriteLine($"Auto select device: {garminDevice.FriendlyName}");
+            break;
+        }
+        else
+        {
+            Console.WriteLine("Enter the number to select the device (or press enter to refresh the device list):");
+            var sel = Console.ReadLine();
+
+            if (int.TryParse(sel, out int iSel) && iSel > 0 && iSel <= count)
+            {
+                garminDevice = devices.ElementAt(iSel - 1);
+                break;
+            }
+        }
+    }
+    devices = MediaDevice.GetDevices();
 }
 
 string? filename = null;
