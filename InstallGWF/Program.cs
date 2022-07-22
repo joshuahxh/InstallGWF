@@ -1,58 +1,136 @@
 ﻿using MediaDevices;
 using System.IO.Compression;
 
+var devices = MediaDevice.GetDevices();
+MediaDevice garminDevice;
+
+while (true)
+{
+    int count = devices.Count();
+    if (count == 0)
+    {
+        Console.WriteLine("No Garmin device found, please plugin your Garmin device.");
+        Console.WriteLine("Press any key to continue or ctrl+c to exit.");
+        Console.ReadKey();
+    }
+    else
+    {
+        Console.WriteLine("Available devices: ");
+        for (int i = 1; i <= count; i++)
+        {
+            var device = devices.ElementAt(i - 1);
+            Console.WriteLine($"{i}: {device.FriendlyName}");
+        }
+        if (count == 1 && devices.ElementAt(0).Manufacturer == "Garmin")
+        {
+            garminDevice = devices.ElementAt(0);
+            Console.WriteLine($"Auto select device: {garminDevice.FriendlyName}");
+            break;
+        }
+        else
+        {
+            Console.WriteLine("Enter the number to select the device (or press enter to refresh the device list):");
+            var sel = Console.ReadLine();
+
+            if (int.TryParse(sel, out int iSel) && iSel > 0 && iSel <= count)
+            {
+                garminDevice = devices.ElementAt(iSel - 1);
+                break;
+            }
+        }
+    }
+    devices = MediaDevice.GetDevices();
+}
+
+string? filename = null;
 if (args.Length == 0)
 {
-    Console.WriteLine($@"To install Garmin app to your device, you can either drag and drop the downloaded zip file or unzip prg file to this app, or run the following in command line:
+    Console.WriteLine("Type or drag url address, zip file, or prg file here, and press Enter key:");
+    filename = Console.ReadLine();
+}
+else
+{
+    filename = args[0];
+}
+
+if (string.IsNullOrEmpty(filename))
+{
+    // usage
+    Console.WriteLine($@"To install Garmin app to your device, you can either drag and drop the downloaded zip file or unzipped prg file to this app, or run one of the following in command lines:
 
     InstallGWF xxxxx.zip
 or
     InstallGWF xxxxx.prg
+or
+    InstallGWF https://garmin.watchfacebuilder.com/watchface/xxxxx/
+");
+    Console.ReadKey();
+    return;
+}
 
-where xxxxx.zip is what you download from watchfacebuilder website.");
-    Console.ReadKey();
-    return;
-}
-var devices = MediaDevice.GetDevices();
-var garminDevice = devices.First(d => d.Manufacturer == "Garmin");
-if (garminDevice == null)
+// download file from website
+if (filename.StartsWith("https://"))
 {
-    Console.WriteLine("No Garmin device found.");
-    Console.ReadKey();
-    return;
+    Console.Write("Downloading...");
+
+    // get the download url
+    if (!filename.Contains("file=app")) filename += (filename.Contains("?") ? "&" : "?") + "file=app";
+
+    var httpClient = new HttpClient();
+    using (var stream = await httpClient.GetStreamAsync(filename))
+    {
+        string tmp = Path.GetTempFileName();
+        using (var fileStream = new FileStream(tmp + ".zip", FileMode.CreateNew))
+        {
+            await stream.CopyToAsync(fileStream);
+        }
+        filename = tmp + ".zip";
+    }
 }
-var ext = Path.GetExtension(args[0]);
+
+// process input file
+var ext = Path.GetExtension(filename);
 if (".zip".Equals(ext, StringComparison.OrdinalIgnoreCase))
 {
-    using (var za = ZipFile.OpenRead(args[0]))
+    Console.Write("Unzipping...");
+    try
     {
-        foreach (var entry in za.Entries)
+        using (var za = ZipFile.OpenRead(filename))
         {
-            if (entry.FullName.EndsWith(".prg", StringComparison.OrdinalIgnoreCase))
+            foreach (var entry in za.Entries)
             {
-                string tmp = Path.GetTempFileName();
-                entry.ExtractToFile(tmp + ".prg");
-                var destFileName = @$"Primary\GARMIN\Apps\{Path.GetFileNameWithoutExtension(entry.FullName)}.prg";
-                garminDevice.Connect();
-                if (garminDevice.FileExists(destFileName)) garminDevice.DeleteFile(destFileName);
-                garminDevice.UploadFile(tmp + ".prg", destFileName);
-                garminDevice.Disconnect();
-                Console.WriteLine(Path.GetFileName(destFileName) + " copied successfully");
+                if (entry.FullName.EndsWith(".prg", StringComparison.OrdinalIgnoreCase))
+                {
+                    string tmp = Path.GetTempFileName();
+                    entry.ExtractToFile(tmp + ".prg");
+                    Console.Write("Copying...");
+                    var destFileName = @$"Primary\GARMIN\Apps\{Path.GetFileNameWithoutExtension(entry.FullName)}.prg";
+                    garminDevice.Connect();
+                    if (garminDevice.FileExists(destFileName)) garminDevice.DeleteFile(destFileName);
+                    garminDevice.UploadFile(tmp + ".prg", destFileName);
+                    garminDevice.Disconnect();
+                    Console.WriteLine(Path.GetFileName(destFileName) + ". Done!");
+                }
             }
         }
+    }
+    catch
+    {
+        Console.WriteLine("Invalid zip file.");
     }
 }
 else if (".prg".Equals(ext, StringComparison.OrdinalIgnoreCase))
 {
-    var destFileName = @$"Primary\GARMIN\Apps\{Path.GetFileNameWithoutExtension(args[0])}.prg";
+    Console.Write("Copying...");
+    var destFileName = @$"Primary\GARMIN\Apps\{Path.GetFileNameWithoutExtension(filename)}.prg";
     garminDevice.Connect();
     if (garminDevice.FileExists(destFileName)) garminDevice.DeleteFile(destFileName);
-    garminDevice.UploadFile(args[0], destFileName);
+    garminDevice.UploadFile(filename, destFileName);
     garminDevice.Disconnect();
-    Console.WriteLine(Path.GetFileName(destFileName) + " copied successfully");
+    Console.WriteLine(Path.GetFileName(destFileName) + ". Done!");
 }
 else
 {
-    Console.WriteLine("Invalid file");
+    Console.WriteLine("Invalid input file.");
 }
 Console.ReadKey();
