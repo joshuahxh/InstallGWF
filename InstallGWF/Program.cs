@@ -104,8 +104,14 @@ if (".zip".Equals(ext, StringComparison.OrdinalIgnoreCase))
                     string tmp = Path.GetTempFileName();
                     entry.ExtractToFile(tmp + ".prg");
                     Console.Write("Copying...");
-                    var destFileName = @$"Primary\GARMIN\Apps\{Path.GetFileNameWithoutExtension(entry.FullName)}.prg";
                     garminDevice.Connect();
+                    var driver = garminDevice.GetDrives()?.FirstOrDefault();
+                    var desc = "Primary";
+                    if (driver != null)
+                    {
+                        desc = driver.RootDirectory.Name;
+                    }
+                    var destFileName = @$"{desc}\GARMIN\Apps\{Path.GetFileNameWithoutExtension(entry.FullName)}.prg";
                     if (garminDevice.FileExists(destFileName)) garminDevice.DeleteFile(destFileName);
                     garminDevice.UploadFile(tmp + ".prg", destFileName);
                     garminDevice.Disconnect();
@@ -122,8 +128,15 @@ if (".zip".Equals(ext, StringComparison.OrdinalIgnoreCase))
 else if (".prg".Equals(ext, StringComparison.OrdinalIgnoreCase))
 {
     Console.Write("Copying...");
-    var destFileName = @$"Primary\GARMIN\Apps\{Path.GetFileNameWithoutExtension(filename)}.prg";
     garminDevice.Connect();
+    var sid = garminDevice.FunctionalObjects(FunctionalCategory.Storage).FirstOrDefault();
+    var driver = garminDevice.GetDrives()?.FirstOrDefault();
+    var desc = "Primary";
+    if (driver != null)
+    {
+        desc = driver.RootDirectory.Name;
+    }
+    var destFileName = @$"{desc}\GARMIN\Apps\{Path.GetFileNameWithoutExtension(filename)}.prg";
     if (garminDevice.FileExists(destFileName)) garminDevice.DeleteFile(destFileName);
     garminDevice.UploadFile(filename, destFileName);
     garminDevice.Disconnect();
