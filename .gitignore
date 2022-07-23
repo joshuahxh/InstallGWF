@@ -1,5 +1,7 @@
 /.vs
 /InstallGWF/bin/Debug/net6.0
+/InstallGWF/bin/Debug/net6.0-windows
 /InstallGWF/obj
 /InstallGWF/.vs
 /InstallGWF/bin/Release/net6.0
+/InstallGWF/bin/Release/net6.0-windows
