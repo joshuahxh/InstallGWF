@@ -103,7 +103,7 @@ if (".zip".Equals(ext, StringComparison.OrdinalIgnoreCase))
                 {
                     string tmp = Path.GetTempFileName();
                     entry.ExtractToFile(tmp + ".prg");
-                    Console.Write("Copying...");
+                    Console.Write("Copying app...");
                     garminDevice.Connect();
                     var driver = garminDevice.GetDrives()?.FirstOrDefault();
                     var desc = "Primary";
@@ -127,7 +127,7 @@ if (".zip".Equals(ext, StringComparison.OrdinalIgnoreCase))
 }
 else if (".prg".Equals(ext, StringComparison.OrdinalIgnoreCase))
 {
-    Console.Write("Copying...");
+    Console.Write("Copying app...");
     garminDevice.Connect();
     var sid = garminDevice.FunctionalObjects(FunctionalCategory.Storage).FirstOrDefault();
     var driver = garminDevice.GetDrives()?.FirstOrDefault();
@@ -137,6 +137,23 @@ else if (".prg".Equals(ext, StringComparison.OrdinalIgnoreCase))
         desc = driver.RootDirectory.Name;
     }
     var destFileName = @$"{desc}\GARMIN\Apps\{Path.GetFileNameWithoutExtension(filename)}.prg";
+    if (garminDevice.FileExists(destFileName)) garminDevice.DeleteFile(destFileName);
+    garminDevice.UploadFile(filename, destFileName);
+    garminDevice.Disconnect();
+    Console.WriteLine(Path.GetFileName(destFileName) + ". Done!");
+}
+else if (".SET".Equals(ext, StringComparison.OrdinalIgnoreCase))
+{
+    Console.Write("Copying setting file...");
+    garminDevice.Connect();
+    var sid = garminDevice.FunctionalObjects(FunctionalCategory.Storage).FirstOrDefault();
+    var driver = garminDevice.GetDrives()?.FirstOrDefault();
+    var desc = "Primary";
+    if (driver != null)
+    {
+        desc = driver.RootDirectory.Name;
+    }
+    var destFileName = @$"{desc}\GARMIN\Apps\Settings\{Path.GetFileNameWithoutExtension(filename)}.SET";
     if (garminDevice.FileExists(destFileName)) garminDevice.DeleteFile(destFileName);
     garminDevice.UploadFile(filename, destFileName);
     garminDevice.Disconnect();
